@@ -315,13 +315,14 @@ writing. Don't try to read from the write end or write to the read end.
 After completing the lab, think about these questions:
 
 1. What happens to memory when fork() creates a new process? Does the child get a complete copy of the parent's memory?
-
+    - The child receives a copy-on-write duplicate of the parent's  virtual address space: pages are shared read-only until either side writes, which triggers a page-fault and private copy. Open file descriptors are duplicated to the same open file descriptions, so offsets are shared.
 2. Why must unused pipe ends be closed? What would happen if you forgot to close them?
-
-3. What are zombie processes and how does wait() prevent them? What would happen to your system if zombie processes
+    - A reader sees EOF only after all writers ends of that pipe are closed. If any writer fd open, read() may block indefinitely. Writing when no readers exist causes sigpipe, and write() returns -1 with epipe. Close  pipefd[0] in the writer, pipefd[1] in the reader, and close both in the parents
+3. What are zombie processes, and how does wait() prevent them? What would happen to your system if zombie processes
    accumulated?
-
+    - A zombie (state Z) has exited, but its termination status hasn’t been collected; most resources are freed, but the process table entry persists. The parent must call wait()/waitpid() to reap it; otherwise, zombies can accumulate and exhaust PID/process-table capacity.
 4. How does the kernel track parent-child relationships? What happens if a parent process dies before its children?
+   - The kernel records each process’s PPID to maintain lineage. If a parent exits first, remaining children are reparented (typically to PID 1 or a subreaper like systemd), which later reaps them when they terminate.
 
 #### What You're Really Learning
 
